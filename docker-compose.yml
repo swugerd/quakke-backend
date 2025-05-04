@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Database services
+  postgres-prod:
+    image: postgres:15
+    container_name: postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: prod_user
+      POSTGRES_PASSWORD: prod_pass
+      POSTGRES_DB: prod_db
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prod_user -d prod_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-stage:
+    image: postgres:15
+    container_name: postgres_stage
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stage_user
+      POSTGRES_PASSWORD: stage_pass
+      POSTGRES_DB: stage_db
+    volumes:
+      - postgres_stage_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stage_user -d stage_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # PGAdmin
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@quakke.com
+      PGADMIN_DEFAULT_PASSWORD: strongpassword
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+      PGADMIN_CONFIG_PROXY_X_HEADERS: "True"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - backend_network
+    depends_on:
+      - postgres-prod
+      - postgres-stage
+
+  # Backend services
+  backend-prod:
+    image: quakke-backend:prod
+    container_name: backend_prod
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+    networks:
+      - backend_network
+    volumes:
+      - ./.env.prod:/app/.env
+      - ./prisma:/app/prisma
+      - ./uploads:/app/uploads
+
+  backend-stage:
+    image: quakke-backend:stage
+    container_name: backend_stage
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres-stage:
+        condition: service_healthy
+    networks:
+      - backend_network
+    volumes:
+      - ./.env.stage:/app/.env
+      - ./prisma:/app/prisma
+      - ./uploads:/app/uploads
+networks:
+  backend_network:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
+  postgres_stage_data:
+  pgadmin_data:

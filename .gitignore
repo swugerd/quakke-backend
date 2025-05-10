@@ -39,6 +39,8 @@ lerna-debug.log*
 .env
 .env.stage
 .env.prod
+.env.pg-stage
+.env.pg-prod
 
 # temp directory
 .temp

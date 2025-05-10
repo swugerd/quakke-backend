@@ -13,3 +13,5 @@ else
 fi
 
 docker build -t quakke-backend:stage .
+
+echo "✅ Build completed"

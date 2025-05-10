@@ -50,11 +50,11 @@ jobs:
 
             ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
               export BRANCH="$BRANCH"
-              cd ~/projects/quakke-backend/scripts
+              cd ~/projects/quakke-backend
               if [[ "$TARGET" == "stage" ]]; then
-                bash build-stage.sh
+                bash scripts/build-stage.sh
               else
-                bash build-prod.sh
+                bash scripts/build-prod.sh
               fi
             EOF
 
@@ -72,11 +72,11 @@ jobs:
         run: |
           TARGET="${{ github.event.inputs.target }}"
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
-            cd ~/projects/quakke-backend/scripts
+            cd ~/projects/quakke-backend
             if [[ "$TARGET" == "stage" ]]; then
-              bash deploy-stage.sh
+              bash scripts/deploy-stage.sh
             else
-              bash deploy-prod.sh
+              bash scripts/deploy-prod.sh
             fi
           EOF
 
@@ -94,10 +94,10 @@ jobs:
         run: |
           TARGET="${{ github.event.inputs.target }}"
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
-            cd ~/projects/quakke-backend/scripts
+            cd ~/projects/quakke-backend
             if [[ "$TARGET" == "stage" ]]; then
-              bash cleanup-stage.sh
+              bash scripts/cleanup-stage.sh
             else
-              bash cleanup-prod.sh
+              bash scripts/cleanup-prod.sh
             fi
           EOF

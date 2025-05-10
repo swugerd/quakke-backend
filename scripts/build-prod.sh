@@ -7,6 +7,4 @@ git fetch origin master
 git checkout master
 git reset --hard origin/master
 
-cd scripts
 docker build -t quakke-backend:prod .
-

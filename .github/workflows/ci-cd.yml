@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,42 +13,63 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+      - name: Set up SSH for Build
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Build Docker Image (stage or prod)
+      - name: 🔧 Build Docker Image on Remote Server
         run: |
-          if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
-            bash scripts/build-stage.sh
-          else
-            bash scripts/build-prod.sh
-          fi
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ~/projects/quakke-backend/scripts
+            if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+              bash build-stage.sh
+            else
+              bash build-prod.sh
+            fi
+          EOF
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Deploy Docker Container
+      - name: Set up SSH for Deploy
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 📦 Deploy Docker Container to Remote Server
         run: |
-          if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
-            bash scripts/deploy-stage.sh
-          else
-            bash scripts/deploy-prod.sh
-          fi
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ~/projects/quakke-backend/scripts
+            if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+              bash deploy-stage.sh
+            else
+              bash deploy-prod.sh
+            fi
+          EOF
 
   cleanup:
     needs: deploy
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    if: ${{ success() }}
     steps:
-      - name: Cleanup Docker Resources
+      - name: Set up SSH for Cleanup
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🧹 Cleanup Docker Resources on Remote Server
         run: |
-          if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
-            bash scripts/cleanup.sh
-          else
-            bash scripts/cleanup-prod.sh
-          fi
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            cd ~/projects/quakke-backend/scripts
+            if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+              bash cleanup-stage.sh
+            else
+              bash cleanup-prod.sh
+            fi
+          EOF

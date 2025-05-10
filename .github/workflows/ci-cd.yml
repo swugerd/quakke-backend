@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker Image (stage or prod)
+        run: |
+          if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+            bash scripts/build-stage.sh
+          else
+            bash scripts/build-prod.sh
+          fi
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Deploy Docker Container
+        run: |
+          if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+            bash scripts/deploy-stage.sh
+          else
+            bash scripts/deploy-prod.sh
+          fi
+
+  cleanup:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    steps:
+      - name: Cleanup Docker Resources
+        run: |
+          if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+            bash scripts/cleanup.sh
+          else
+            bash scripts/cleanup-prod.sh
+          fi

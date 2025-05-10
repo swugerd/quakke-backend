@@ -12,5 +12,4 @@ else
   echo "⚠️ BRANCH variable is not set. Skipping git pull."
 fi
 
-cd scripts
 docker build -t quakke-backend:stage .

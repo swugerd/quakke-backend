@@ -5,6 +5,15 @@ on:
   push:
     branches: [ master ]
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deploy target'
+        required: true
+        default: 'stage'
+        type: choice
+        options:
+          - stage
+          - prod
 
 jobs:
   build:
@@ -20,33 +29,51 @@ jobs:
 
       - name: 🔧 Build Docker Image on Remote Server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
-            cd ~/projects/quakke-backend/scripts
-            if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
-              bash build-stage.sh
+            if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              BRANCH="${{ github.head_ref }}"
             else
-              bash build-prod.sh
+              BRANCH="${{ github.ref_name }}"
             fi
-          EOF
+
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              TARGET="${{ github.event.inputs.target }}"
+            elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              TARGET="stage"
+            elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+              TARGET="prod"
+            else
+              echo "❌ Cannot determine deployment target"
+              exit 1
+            fi
+
+            echo "ℹ️ Building for target: $TARGET, branch: $BRANCH"
+
+            ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
+              export BRANCH="$BRANCH"
+              cd ~/projects/quakke-backend/scripts
+              if [[ "$TARGET" == "stage" ]]; then
+                bash build-stage.sh
+              else
+                bash build-prod.sh
+              fi
+            EOF
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up SSH for Deploy
+      - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: 📦 Deploy Docker Container to Remote Server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          TARGET="${{ github.event.inputs.target }}"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
             cd ~/projects/quakke-backend/scripts
-            if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+            if [[ "$TARGET" == "stage" ]]; then
               bash deploy-stage.sh
             else
               bash deploy-prod.sh
@@ -56,18 +83,19 @@ jobs:
   cleanup:
     needs: deploy
     runs-on: ubuntu-latest
-    if: ${{ success() }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
-      - name: Set up SSH for Cleanup
+      - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: 🧹 Cleanup Docker Resources on Remote Server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          TARGET="${{ github.event.inputs.target }}"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
             cd ~/projects/quakke-backend/scripts
-            if [[ $GITHUB_EVENT_NAME == 'pull_request' ]]; then
+            if [[ "$TARGET" == "stage" ]]; then
               bash cleanup-stage.sh
             else
               bash cleanup-prod.sh

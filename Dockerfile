@@ -29,8 +29,6 @@ COPY --from=builder /app/prisma ./prisma
 
 RUN mkdir -p /app/uploads
 
-COPY .env.example .env
-
 EXPOSE 4000
 
 CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/main"]

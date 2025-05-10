@@ -1,5 +1,16 @@
 #!/bin/bash
 echo "🔧 Building staging image..."
 
-cd ~/projects/quakke_backend/scripts
+cd ~/projects/quakke-backend
+
+if [ -n "$BRANCH" ]; then
+  echo "📥 Pulling branch: $BRANCH"
+  git fetch origin "$BRANCH"
+  git checkout "$BRANCH" || git checkout -b "$BRANCH" origin/"$BRANCH"
+  git reset --hard origin/"$BRANCH"
+else
+  echo "⚠️ BRANCH variable is not set. Skipping git pull."
+fi
+
+cd scripts
 docker build -t quakke-backend:stage .

@@ -4,11 +4,6 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to deploy'
-        required: false
-        type: string
 
 jobs:
   build:
@@ -28,7 +23,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BRANCH="${{ github.head_ref }}"
           else
-            BRANCH="${{ github.event.inputs.branch || github.ref_name }}"
+            BRANCH="${{ github.ref_name }}"
           fi
 
           echo "ℹ️ Building for STAGE, branch: $BRANCH"
@@ -42,7 +37,8 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    
+    if: github.event_name == 'workflow_dispatch'
+
     steps:
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3

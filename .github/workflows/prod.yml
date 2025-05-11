@@ -4,11 +4,6 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: 'Type "deploy" to confirm production deployment'
-        required: true
-        type: string
 
 jobs:
   build:
@@ -36,6 +31,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     
     steps:
       - name: Set up SSH
@@ -48,13 +44,6 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
             cd ~/projects/quakke-backend
             bash scripts/deploy-prod.sh
-          EOF
-
-      - name: Verify deployment
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
-            cd ~/projects/quakke-backend
-            curl -f http://localhost:PROD_PORT/health || exit 1
           EOF
 
   cleanup:

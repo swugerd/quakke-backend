@@ -34,7 +34,7 @@ import { HistoryModule } from './history/history.module';
     ConfigModule.forRoot({ isGlobal: true }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      playground: process.env.NODE_ENV === 'development',
+      graphiql: process.env.NODE_ENV === 'development',
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       context: ({ req, res }) => ({ req, res }),
       useGlobalPrefix: true,
